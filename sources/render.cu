@@ -104,15 +104,53 @@ __host__ __device__ bool computeInnerVertex(Vertex* triangle, int x, int y, Vert
     return true;
 }
 
+#if DEVICE == 0
+
+/**
+ * Fills the screen pixels by fitting the given texture on the 2D space 
+ * covered by the polygons stored into the `vertices` array.
+ */
+void raster(Vertex* vertices, int size, Texture texture, DeviceScreen screen, SDL_Rect area) {
+    int res = screen.resolution;
+    int scaledW = area.w/res;
+    int scaledH = area.h/res;
+    for (int scaledX = 0; scaledX < scaledW; scaledX++)
+        for (int scaledY = 0; scaledY < scaledH; scaledY++) {
+            int x = scaledX*res+area.x;
+            int y = scaledY*res+area.y;
+            int index = y*screen.width+x;
+            bool validPixel = false;
+            for (int j = 0; j < size; j += 3) {
+                Vertex triangle[3] = {vertices[j], vertices[j+1], vertices[j+2]};
+                Vertex vertex;
+                double z;
+                if (computeInnerVertex(triangle, x, y, &vertex, &z) && (screen.zbuffer[index] == 0 || z > screen.zbuffer[index])) {
+                    int u = min((int) (vertex.texCoord[0]*z*texture.width), texture.width-1);
+                    int v = min((int) (vertex.texCoord[1]*z*texture.height), texture.height-1);
+                    int rgb = texture.pixels ? texture.pixels[v*texture.width+u] : 0xffffff;
+                    screen.pixels[index] = rgb;
+                    screen.zbuffer[index] = z;
+                    validPixel = true;
+                }
+            }
+            
+            if (validPixel)
+                for (int i = y; i < y+res; i++)
+                    for (int j = x; j < x+res; j++)
+                        screen.pixels[i*screen.width+j] = screen.pixels[index];
+        }
+}
+
+#elif DEVICE == 1
 /**
  * Fills the screen pixels by fitting the given texture on the 2D space 
  * covered by the polygons stored into the `vertices` array.
  * Each CUDA thread is responsible of a specific portion of screen pixels.
  */
-__global__ void raster(Vertex* vertices, int size, Texture texture, DeviceScreen screen, SDL_Rect* area) {
+__global__ void raster(Vertex* vertices, int size, Texture texture, DeviceScreen screen, SDL_Rect area) {
     int res = screen.resolution;
-    int scaledW = area->w/res;
-    int scaledH = area->h/res;
+    int scaledW = area.w/res;
+    int scaledH = area.h/res;
     int start, num_pixels;
     distribute(scaledW*scaledH, 1, &start, &num_pixels);
     
@@ -120,8 +158,8 @@ __global__ void raster(Vertex* vertices, int size, Texture texture, DeviceScreen
         if (i >= scaledW*scaledH)
             break;
  
-        int x = i%scaledW*res+area->x;
-        int y = i/scaledW*res+area->y;
+        int x = i%scaledW*res+area.x;
+        int y = i/scaledW*res+area.y;
         int index = y*screen.width+x;
         bool validPixel = false;
         for (int j = 0; j < size; j += 3) {
@@ -132,7 +170,6 @@ __global__ void raster(Vertex* vertices, int size, Texture texture, DeviceScreen
                 int u = min((int) (vertex.texCoord[0]*z*texture.width), texture.width-1);
                 int v = min((int) (vertex.texCoord[1]*z*texture.height), texture.height-1);
                 int rgb = texture.pixels ? texture.pixels[v*texture.width+u] : 0xffffff;
-                //double[] point = ArrayUtil.scale(vertex.position(), z);
                 screen.pixels[index] = rgb;
                 screen.zbuffer[index] = z;
                 validPixel = true;
@@ -159,3 +196,5 @@ __global__ void initScreen(DeviceScreen screen) {
             screen.zbuffer[index] = -DBL_MAX;
         }
 }
+
+#endif

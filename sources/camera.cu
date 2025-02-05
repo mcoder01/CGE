@@ -57,7 +57,8 @@ void Camera::stop(SDL_Scancode code) {
 void Camera::onEvent(SDL_Event event) {
     switch (event.type) {
         case SDL_MOUSEMOTION:
-            rotate(event.motion.xrel, event.motion.yrel);
+            if (event.motion.state == SDL_BUTTON_LMASK)
+                rotate(event.motion.xrel, event.motion.yrel);
             break;
         case SDL_KEYDOWN:
             move(SDL_GetScancodeFromKey(event.key.keysym.sym));

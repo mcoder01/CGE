@@ -10,9 +10,6 @@ Screen::Screen(const char* title, int width, int height):title(title),width(widt
     window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
     surface = SDL_GetWindowSurface(window);
-
-    SDL_SetRelativeMouseMode(SDL_TRUE);
-    SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_SCALING, "0");
 }
 
 long nanoTime() {
@@ -48,7 +45,7 @@ void Screen::update() {
     world->tick(deltaTime);
 
     // Render the scene captured by the camera on the screen
-    world->drawObjects(*camera, renderer, (int*) surface->pixels);
+    world->drawObjects(surface, *camera);
     SDL_UpdateWindowSurface(window);
 }
 

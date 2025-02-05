@@ -1,6 +1,14 @@
 #ifndef MATH_UTIL_H
 #define MATH_UTIL_H
 
+#if DEVICE == 0
+
+void matrixMatrixMultiply(double*, double*, double*, int, int, int);
+void add(double*, double*, int, int, double*);
+void sub(double*, double*, int, int, double*);
+void rotate(double*, double*, int, double*);
+
+#elif DEVICE == 1
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
@@ -29,4 +37,5 @@ __global__ void add(double*, double*, int, int, double*);
 __global__ void sub(double*, double*, int, int, double*);
 void rotate(double*, double*, int, double*);
 
+#endif
 #endif

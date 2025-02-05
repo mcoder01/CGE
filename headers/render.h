@@ -42,7 +42,11 @@ inline __host__ __device__ Vertex lerpVertex(Vertex* start, Vertex* end, double 
     return result;
 }
 
+#if DEVICE == 0
+void raster(Vertex*, int, Texture, DeviceScreen, SDL_Rect);
+#elif DEVICE == 1
 __global__ void initScreen(DeviceScreen);
-__global__ void raster(Vertex*, int, Texture, DeviceScreen, SDL_Rect*);
+__global__ void raster(Vertex*, int, Texture, DeviceScreen, SDL_Rect);
+#endif
 
 #endif

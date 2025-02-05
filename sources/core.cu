@@ -1,9 +1,27 @@
+#include <thread>
+#include <atomic>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
 #include "../headers/screen.h"
-#include "../headers/world.h"
 #include "../headers/camera.h"
+#include "../headers/world.h"
+
+std::atomic running(true);
+
+/**
+ * Catch I/O events (e.g. keyboard, mouse, etc...)
+ */
+void catchEvents(Camera& camera) {
+    while(running) {
+        SDL_Event event;
+        if (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT)
+                running = false;
+            else camera.onEvent(event);
+        }
+    }
+}
 
 int main() {
     // Opens a new window and creates the corresponding screen object
@@ -27,17 +45,9 @@ int main() {
     // Initialize the screen
     screen.init();
 
-    // Start the main loop
-    bool running = true;
-    while(running) {
+    // Start the main loop and event listener
+    std::thread loop(catchEvents, std::ref(camera));
+    while(running)
         screen.update();
-
-        // Catch I/O events (e.g. keyboard, mouse, etc...)
-        SDL_Event event;
-        if (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT)
-                running = false;
-            else camera.onEvent(event);
-        }
-    }
+    loop.join();
 }

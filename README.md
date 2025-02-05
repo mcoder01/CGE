@@ -86,8 +86,11 @@ The rastering process fits a texture on the faces of the object. It is done thro
 ## Performance comparisons
 
 ## Build and run
-```
-nvcc sources/*.cu -o cge -lcublas -lSDL2 -lSDL2_image -arch=sm_xx
+```bash
+nvcc sources/*.cu -o cge -lcublas -lSDL2 -lSDL2_image -arch=sm_xx -Xcompiler -DDEVICE=1
 ./cge
 ```
+
+The `-DDEVICE` option let you choose whether the engine should use GPU acceleration or not. If it is set to `0`, GPU acceleration is disabled. Set it to `1` for enabling it.
+
 > The engine only works on GPUs with SM 6.0 or higher.

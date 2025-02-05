@@ -3,7 +3,6 @@
 
 #include "mesh.h"
 #include "cuda_util.h"
-#include "render.h"
 
 class World {
 private:
@@ -14,7 +13,7 @@ public:
     World(DeviceScreen);
     void addMesh(Mesh);
     void tick(double);
-    void drawObjects(Obj3d, SDL_Renderer*, int*);
+    void drawObjects(SDL_Surface*, Obj3d);
 };
 
 typedef struct {
