@@ -38,7 +38,7 @@ int main() {
     Mesh cube = {
         {0},
         loadModel("resources/models/cube.obj"),
-        loadTexture("resources/textures/cobblestone.png", IMG_INIT_PNG)
+        loadTexture("resources/textures/log.png", IMG_INIT_PNG)
     };
     world.addMesh(cube);
 

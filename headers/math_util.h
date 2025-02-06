@@ -2,13 +2,10 @@
 #define MATH_UTIL_H
 
 #if DEVICE == 0
-
-void matrixMatrixMultiply(double*, double*, double*, int, int, int);
-void add(double*, double*, int, int, double*);
-void sub(double*, double*, int, int, double*);
-void rotate(double*, double*, int, double*);
-
+#define SIGNATURE
 #elif DEVICE == 1
+#define SIGNATURE __global__
+
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
@@ -31,11 +28,11 @@ inline __device__ void distribute(int work_size, int skip, int* start, int* nloc
         *start = *nloc*index + carry*skip;
     }
 }
+#endif
 
 void matrixMatrixMultiply(double*, double*, double*, int, int, int);
-__global__ void add(double*, double*, int, int, double*);
-__global__ void sub(double*, double*, int, int, double*);
+SIGNATURE void add(double*, double*, int, int, double*);
+SIGNATURE void sub(double*, double*, int, int, double*);
 void rotate(double*, double*, int, double*);
 
-#endif
 #endif

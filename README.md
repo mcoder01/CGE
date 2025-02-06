@@ -91,6 +91,6 @@ nvcc sources/*.cu -o cge -lcublas -lSDL2 -lSDL2_image -arch=sm_xx -Xcompiler -DD
 ./cge
 ```
 
-The `-DDEVICE` option let you choose whether the engine should use GPU acceleration or not. If it is set to `0`, GPU acceleration is disabled. Set it to `1` for enabling it.
+The `-DDEVICE` option let you choose whether the engine should use the GPU or not. If it is set to `0`, GPU acceleration is disabled. Set it to `1` for enabling it.
 
 > The engine only works on GPUs with SM 6.0 or higher.

@@ -3,6 +3,12 @@
 
 #include "cuda_util.h"
 
+#if DEVICE == 0
+#define SIGNATURE
+#elif DEVICE == 1
+#define SIGNATURE __global__
+#endif
+
 typedef struct {
     double position[3];
     double texCoord[2];
@@ -42,11 +48,7 @@ inline __host__ __device__ Vertex lerpVertex(Vertex* start, Vertex* end, double 
     return result;
 }
 
-#if DEVICE == 0
-void raster(Vertex*, int, Texture, DeviceScreen, SDL_Rect);
-#elif DEVICE == 1
 __global__ void initScreen(DeviceScreen);
-__global__ void raster(Vertex*, int, Texture, DeviceScreen, SDL_Rect);
-#endif
+SIGNATURE void raster(Vertex*, int, Texture, DeviceScreen, SDL_Rect);
 
 #endif
