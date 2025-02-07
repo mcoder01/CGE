@@ -1,4 +1,4 @@
-<!-- toc start: 3 [do not erase this comment] -->
+<!-- toc start: 4 [do not erase this comment] -->
 **Table of contents**
 - [CUDA Graphic Engine (CGE)](#cuda-graphic-engine-cge)
 	- [Introduction](#introduction)
@@ -11,7 +11,7 @@
 	- [CUDA optimizations](#cuda-optimizations)
 		- [Points viewing](#points-viewing)
 		- [Other pipeline stages](#other-pipeline-stages)
-		- [Rastering](#rastering)
+			- [Rastering](#rastering)
 	- [Performance comparisons](#performance-comparisons)
 	- [Build and run](#build-and-run)
 <!-- toc end [do not erase this comment] -->
@@ -69,7 +69,7 @@ where:
 
 > Note that points in the origin will be projected on the center of the screen.
 
-For performance improvement purposes, the pipeline also performs another computation, that is the *rendering area*. Since each mesh occupies a small portion of the screen on the average, is clever to find the minimum rectangle which contains all the faces of the mesh. This can be done by looping through all the projected points of the mesh and search for the top left and the bottom right corners of the rectangle.
+For performance improvement purposes, the pipeline also performs another computation, that is the *rendering area*. Since each mesh occupies a small portion of the screen on the average, is clever to find the minimum rectangle which contains all the faces of the mesh and scan only the pixels contained in it instead of the whole screen. This can be done by looping through all the projected points of the mesh and search for the top left and the bottom right corners of the rectangle.
 
 ## CUDA optimizations
 In order to reduce the load of work that the CPU should face, the engine uses the CUDA framework as the interface for the GPU so that it can use parallelization to accelerate the computation of the heaviest jobs. Let's see where and how CUDA is used.
@@ -80,10 +80,64 @@ In the stage of points viewing, points must be rotated and translated. For the r
 ### Other pipeline stages
 All other stages of the pipeline use CUDA to accelerate the computation through kernels which parallelize the work on the first dimension of the considered matrix. In normal computation, face decomposition and clipping, each CUDA thread is responsible for the computation of a small set of faces, while in point projection and rendering area computation, each thread works on a different bunch of points.
 
-### Rastering
+All these stages are coded into different methods which use the following function in order to properly distribute the work among all the threads:
+
+```c++
+/**
+ * This method returns the starting point and the number of elements on which the
+ * calling thread should work with, in a parallel computation.
+ * 
+ * Parameters:
+ * 	- work_size is the total number of elements
+ * 	- skip corresponds to the size of each single element
+ * 	- start will contain the starting point
+ * 	- nloc will contain the number of elements to process
+ */
+inline __device__ void distribute(int work_size, int skip, int* start, int* nloc) {
+    int threads = gridDim.x*blockDim.x;
+    int index = blockIdx.x*blockDim.x+threadIdx.x;
+
+    int scaled_size = work_size/skip;
+    int loc = scaled_size/threads;
+    int carry = scaled_size%threads;
+    if (index < carry) {
+        *nloc = (loc+1)*skip;
+        *start = *nloc*index;
+    } else {
+        *nloc = loc*skip;
+        *start = *nloc*index + carry*skip;
+    }
+}
+```
+
+> The algorithm simply distributes the work among all the threads, by managing any combination of input size and threads number.
+
+#### Rastering
 The rastering process fits a texture on the faces of the object. It is done through the linear interpolation of the UV coordinates of the triangle vertices, according to the X and Y coordinates of the screen. On this stage, the parallelization is done on the pixels of the screen, so each thread works on a different set of pixels and for each one loops through the faces of the object and computes the color that the texture assumes on that interpolated point. The final value of the pixel will be the color taken from the face which is the closest to the camera on the $z$ axis.
 
 ## Performance comparisons
+The engine has been tested with a AMD Ryzen 3600 CPU and a MSI Geforce GTX 1650 Super graphic card. FPS (Frames Per Second) is a good metric to evaluate the performances of the engine, it indeed counts the number of frames that the engine can process in one second. The code which computes this metric is executed on each frame and it is the following:
+```c++
+long now = nanoTime(); // Get current time in nanoseconds
+long passedTime = now-lastUpdate; // Time passed since the previous frame
+unprocessedTime += passedTime; // Update the number of unprocessed nanoseconds
+lastUpdate = now; // Update the time of the last frame
+
+fps++; // Increase the FPS counter
+if (unprocessedTime >= 1E9) { // Check if unprocessed time exceeds one second
+    showFPS(); // Show FPS value on the title bar
+    unprocessedTime -= 1E9; // The last second has been processed
+    fps = 0; // Reset FPS counter
+}
+```
+
+The following simulation shows the performances of the engine before its optimization through CUDA.
+
+![cpu-demo](images/cpu_demo.gif)
+The *lag* is quite evident when the camera gets closer to the object in the scene (a rotating cube in this case), highlighted by the drastic drop in FPS (displayed in the window title bar), because both the number of pixels involved in the rendering and the load of the processor increase.
+
+![gpu-demo](images/gpu_demo.gif)
+In the above simulation, we can see the gain in terms of FPS and movements smoothness thanks to the help of the GPU which performs the most of the work regarding the processing of the model and its rendering on the screen. Even when the camera gets closer to the object, smoothness remains the same and FPS experience a slight drop.
 
 ## Build and run
 ```bash

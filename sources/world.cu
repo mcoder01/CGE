@@ -42,6 +42,14 @@ __host__ __device__ double frustumIntersection(double* a, double* b, Plane plane
     return (pd-ad)/(bd-ad);
 }
 
+void World::addMesh(Mesh mesh) {
+    objects.push_back(mesh);
+}
+
+void World::tick(double deltaTime) {
+    objects[0].rot[1] += 0.1*deltaTime;
+}
+
 #if DEVICE == 0
 
 #include "cpu/world.cpp"

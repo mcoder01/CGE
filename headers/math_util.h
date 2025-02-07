@@ -11,7 +11,7 @@
 
 /**
  * This method returns the starting point and the number of elements on which the
- * calling thread must work with in a parallel computation.
+ * calling thread should work with, in a parallel computation.
  */
 inline __device__ void distribute(int work_size, int skip, int* start, int* nloc) {
     int threads = gridDim.x*blockDim.x;

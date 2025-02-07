@@ -2,14 +2,6 @@ World::World(DeviceScreen screen) {
     this->screen = allocateScreenDataOnDevice(screen);
 }
 
-void World::addMesh(Mesh mesh) {
-    objects.push_back(mesh);
-}
-
-void World::tick(double deltaTime) {
-    objects[0].rot[1] += 0.1*deltaTime;
-}
-
 /**
  * Rotates and moves the points of the given mesh in the 3D space with respect
  * to the position and the rotation of the camera and the mesh object.

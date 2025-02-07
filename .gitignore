@@ -1,2 +1,4 @@
 /.vscode
-/cge
+cpu_cge
+gpu_cge
+README.pdf
