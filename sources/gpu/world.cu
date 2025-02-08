@@ -258,27 +258,78 @@ SDL_Rect computeRenderArea(Vertex* vertices, int num_points, DeviceScreen screen
  * This method is called each frame to process and render all the meshes of the scene.
  */
 void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
+    cudaEvent_t frameStart, frameStop;
+    float framePassedTime;
+    cudaEventCreate(&frameStart);
+    cudaEventCreate(&frameStop);
+    cudaEventRecord(frameStart, 0);
     initScreen<<<8,224>>>(screen); // Clean the screen
 
     DeviceObj3d d_camera = uploadObj3dToDevice(camera);
     for (Mesh mesh : objects) {
         // Compute all the data required to render the mesh
         DeviceMesh d_mesh = uploadMeshToDevice(mesh);
+
+        cudaEvent_t start, stop;
+        float time;
+        cudaEventCreate(&start);
+        cudaEventCreate(&stop);
+
+        cudaEventRecord(start, 0);
         double* points = viewMeshPoints(d_mesh, d_camera);
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&time, start, stop);
+        viewPointTime += time;
+
         double* texCoords = uploadTexCoordsToDevice(d_mesh);
+
+        cudaEventRecord(start, 0);
         double* normals = computeNormals(d_mesh, points);
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&time, start, stop);
+        normalComputationTime += time;
         
         // Decompose points into triangles and clip them
+        cudaEventRecord(start, 0);
         int faces;
         Vertex* vertices = decomposeFaces(d_mesh, points, texCoords, normals, faces);
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&time, start, stop);
+        faceDecompositionTime += time;
+
+        cudaEventRecord(start, 0);
         Vertex* clipped = clipFaces(vertices, faces);
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&time, start, stop);
+        faceClippingTime += time;
         cudaFree(vertices);
 
         /* Project the final vertices, compute the rendering area 
          * of the screen and fit the texture on the mesh */
+        cudaEventRecord(start, 0);
         project<<<48,64>>>(clipped, faces*3, screen);
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&time, start, stop);
+        projectionTime += time;
+
+        cudaEventRecord(start, 0);
         SDL_Rect area = computeRenderArea(clipped, faces*3, screen);
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&time, start, stop);
+        areaComputationTime += time;
+
+        cudaEventRecord(start, 0);
         raster<<<48,64>>>(clipped, faces*3, d_mesh.texture, screen, area);
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&time, start, stop);
+        rasterTime += time;
 
         // Free all the memory allocated on the GPU for this mesh
         deleteDeviceMesh(d_mesh);
@@ -290,4 +341,10 @@ void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
 
     deleteDeviceObj3d(d_camera);
     downloadDevicePixels(screen, (int*) surface->pixels); // Update pixels
+
+    cudaEventRecord(frameStop, 0);
+    cudaEventSynchronize(frameStop);
+    cudaEventElapsedTime(&framePassedTime, frameStart, frameStop);
+    frameTime += framePassedTime;
+    frames++;
 }

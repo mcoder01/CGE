@@ -42,6 +42,17 @@ __host__ __device__ double frustumIntersection(double* a, double* b, Plane plane
     return (pd-ad)/(bd-ad);
 }
 
+World::~World() {
+    printf("Average points viewing time: %f\n", viewPointTime/frames);
+    printf("Average normal computation time: %f\n", normalComputationTime/frames);
+    printf("Average face decomposition time: %f\n", faceDecompositionTime/frames);
+    printf("Average face clipping time: %f\n", faceClippingTime/frames);
+    printf("Average projection time: %f\n", projectionTime/frames);
+    printf("Average area computation time: %f\n", viewPointTime/frames);
+    printf("Average raster time: %f\n", rasterTime/frames);
+    printf("Average frame time: %f\n", frameTime/frames);
+}
+
 void World::addMesh(Mesh mesh) {
     objects.push_back(mesh);
 }

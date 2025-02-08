@@ -1,3 +1,5 @@
+#include <chrono>
+
 World::World(DeviceScreen screen):screen(screen) {}
 
 /**
@@ -183,6 +185,7 @@ SDL_Rect computeRenderArea(Vertex* vertices, int num_points, DeviceScreen screen
  * This method is called each frame to process and render all the meshes of the scene.
  */
 void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
+    auto frameStart = std::chrono::high_resolution_clock::now();
     screen.pixels = (int*) surface->pixels;
     screen.zbuffer = new double[screen.width*screen.height]();
 
@@ -191,19 +194,44 @@ void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
 
     for (Mesh mesh : objects) {
         // Compute all the data required to render the mesh
+        auto start = std::chrono::high_resolution_clock::now();
         double* points = viewMeshPoints(mesh, camera);
+        auto end = std::chrono::high_resolution_clock::now();
+        viewPointTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
+
+        start = std::chrono::high_resolution_clock::now();
         double* normals = computeAggregatedNormals(mesh, points);
+        end = std::chrono::high_resolution_clock::now();
+        normalComputationTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
         
         // Decompose points into triangles and clip them
+        start = std::chrono::high_resolution_clock::now();
         Vertex vertices[mesh.model.vertices.size()];
         int faces = decomposeFaces(mesh, points, mesh.model.texCoords.data(), normals, vertices);
+        end = std::chrono::high_resolution_clock::now();
+        faceDecompositionTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
+        
+        start = std::chrono::high_resolution_clock::now();
         Vertex* clipped = clipFaces(vertices, faces);
+        end = std::chrono::high_resolution_clock::now();
+        faceClippingTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
 
         /* Project the final vertices, compute the rendering area 
          * of the screen and fit the texture on the mesh */
+        start = std::chrono::high_resolution_clock::now();
         project(clipped, faces*3, screen);
+        end = std::chrono::high_resolution_clock::now();
+        projectionTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
+
+        start = std::chrono::high_resolution_clock::now();
         SDL_Rect area = computeRenderArea(clipped, faces*3, screen);
+        end = std::chrono::high_resolution_clock::now();
+        areaComputationTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
+
+        start = std::chrono::high_resolution_clock::now();
         raster(clipped, faces*3, mesh.texture, screen, area);
+        end = std::chrono::high_resolution_clock::now();
+        rasterTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
 
         // Free all the memory allocated on the GPU for this mesh
         delete[] points;
@@ -212,4 +240,8 @@ void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
     }
 
     delete[] screen.zbuffer;
+
+    auto frameEnd = std::chrono::high_resolution_clock::now();
+    frameTime += ((std::chrono::duration<float, std::milli>) (frameEnd-frameStart)).count();
+    frames++;
 }
