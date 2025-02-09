@@ -2,6 +2,7 @@
 **Table of contents**
 - [CUDA Graphic Engine (CGE)](#cuda-graphic-engine-cge)
 	- [Introduction](#introduction)
+	- [Build and run](#build-and-run)
 	- [Framework and libraries](#framework-and-libraries)
 	- [Input Data](#input-data)
 		- [Model files](#model-files)
@@ -12,13 +13,23 @@
 		- [Other pipeline stages](#other-pipeline-stages)
 			- [Rasterization](#rasterization)
 	- [Performance comparisons](#performance-comparisons)
-	- [Build and run](#build-and-run)
+	- [Future updates](#future-updates)
 <!-- toc end [do not erase this comment] -->
 
 # CUDA Graphic Engine (CGE)
 
 ## Introduction
 The project aims to create a graphic engine based on CUDA able of rendering 3D objects on the screen, using perspective projection to tranform 3D points into two dimensions. The application can also fit images (called **textures**) on the surfaces of the objects, so it is possible to represent different materials. Everything is showned from the perspective of a camera that can be moved and rotated through the mouse and the keyboard.
+
+## Build and run
+```bash
+nvcc sources/*.cu -o cge -lcublas -lSDL2 -lSDL2_image -arch=sm_xx -Xcompiler -DDEVICE=1
+./cge
+```
+
+The `-DDEVICE` option let you choose whether the engine should use the GPU or not. If it is set to `0`, GPU acceleration is disabled. Set it to `1` for enabling it.
+
+> The engine only works on GPUs with SM 6.0 or higher.
 
 ## Framework and libraries
 The engine is totally written in **C++**, using the **CUDA** framework to optimize the computations through parallelization on the GPU. The **cuBLAS** library is also used to simplify matrix operations, while the **SDL** library is responsible for managing the graphic and the inputs coming from the keyboard and the mouse.
@@ -159,12 +170,7 @@ In the above simulation, we can see the gain in terms of FPS and movements smoot
 
 From the table above, we can see that the computational time needed for rasterization has dropped dramatically, but all the other stages have slowed down due to the overhead caused by device memory operations and kernel calls. However, the total computational time to process a single frame stays low, therefore we achieved a gain in terms of performances.
 
-## Build and run
-```bash
-nvcc sources/*.cu -o cge -lcublas -lSDL2 -lSDL2_image -arch=sm_xx -Xcompiler -DDEVICE=1
-./cge
-```
+## Future updates
+The engine can grow significantly in terms of provided features and performance optimizations. The first feature that can be added could be shaders, since normal computation is already implementd. To implement this feature, the engine needs some more informations about the materials of the meshes (e.i. how they absorbe, diffuse and reflect the lights). These informations are usually stored into *Material* files that have extension `.mtl`. So it would be necessary to add a function able of parsing those files and then implement some shading algorithms like *Phong* shading model.
 
-The `-DDEVICE` option let you choose whether the engine should use the GPU or not. If it is set to `0`, GPU acceleration is disabled. Set it to `1` for enabling it.
-
-> The engine only works on GPUs with SM 6.0 or higher.
+In terms of optimizations, we can implement some algorithms to find the best trade off values for grid size and block size in each CUDA kernel, since the actual values are the results of some empirical tests. Moreover, the GPU memory could be managed better, for example using matrix allocation with pitch.
