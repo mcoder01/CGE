@@ -53,7 +53,7 @@ Texture are nothing else than square images. The more large are their dimensions
 ## Pipeline
 The term ***pipeline*** refers to the whole process of transforming the points and perform computations up to the rendering of meshes on the screen. Let's see all of its stages more in detail:
 1. **Points viewing**: on this stage, the points of the mesh currently processed are firstly rotated according to the rotation angles of the mesh. This allows the mesh to be rotated on itself, but only if the model refers to a cartesian system having its origin on the center point of the object. Then the world position of the object is added to each one of its points, while the camera position is subtracted from them. This is because of the illusion of moving around the world which involves the object to always move in the opposite direction of the camera. The same thing happens for the rotation of the object according to the opposite of the camera rotation angles.
-1. **Normals computations**: normals are unit vectors which indicates the facing of each triangle of the mesh. They can be used to apply shaders on the mesh. The **shader** indicates how a mesh reflects and diffuses the surrounding lights. To compute normals, the engine performs the cross product between two sides of each triangle, then it sums the computed vector to the normals corresponding to each point of the triangle. This way, if we use a shader, the transition between one face and the other is much smoother.
+1. **Normals computations**: normals are unit vectors which indicates the facing of each triangle vertex. They can be used to apply shaders on the mesh. The **shader** indicates how a mesh reflects and diffuses the surrounding lights. To compute normals, the engine performs the cross product between two sides of each triangle, then it sums the computed vector to the normals corresponding to each point of the triangle. This way, if we use a shader, the transition between one face and the other is much smoother.
 1. **Face decomposition**: on this stage, the processed points are inserted into a list of vertices which follows the connections between the points, in order to construct the faces as specified by the model, under the shape of triangles. Face decomposition also regards other data of the mesh, so to each face vertex is associated the corresponding normal and the texture point. During this stage, we also compute faces normals in order to check for visible faces and discard the invisible ones.
 1. **Frustum culling**: it is needed in order to limit the rendering to a small portion of the world, which corresponds to that captured by the camera. This avoids an overload of the engine when the world gets too big. To do that the engine generates a **frustum**, that is a set of planes in the 3D space, described by their positions and normals, which delimit the portion of world captured by the camera. Triangles outside those planes are discarded, those inside are keeped, while those who cross frustum planes are clipped into one or two smaller triangles.
 1. **Perspective projection**: in this stage each 3D point in projected into the 2D space by following these formulas:
@@ -144,13 +144,13 @@ The following table shows the computational times (in milliseconds) for each pip
 | Stage | Averaged Computational Time (ms) |
 |:-:|:-:|
 | Points viewing | 0.002131 |
-| Normal computation | 0.001511 |
+| Normals computation | 0.001511 |
 | Faces decomposition | 0.001399 |
-| Faces clipping | 0.001160 |
-| Projection | 0.000127 |
-| Render Area Computation | 0.002131 |
+| Frustum culling | 0.001160 |
+| Points projection | 0.000127 |
+| Render area computation | 0.002131 |
 | Rasterization | 12.593671 |
-| **Total frame processing** | **13.120979** |
+| **Frame processing** | **13.120979** |
 
 As we can see from the table, most of the load is due to the rasterization process, while other computational times depend on input data sizes, which are very small for a cube, so they remain low.
 
@@ -160,13 +160,13 @@ In the above simulation, we can see the gain in terms of FPS and movements smoot
 | Stage | Averaged Computational Time (ms) |
 |:-:|:-:|
 | Points viewing | 0.715701 |
-| Normal computation | 0.182957 |
+| Normals computation | 0.182957 |
 | Faces decomposition | 0.032343 |
-| Faces clipping | 0.044581 |
-| Projection | 0.005803 |
-| Render Area Computation | 0.715701 |
+| Frustum culling | 0.044581 |
+| Points projection | 0.005803 |
+| Render area computation | 0.715701 |
 | Rasterization | 1.411565 |
-| **Total frame processing** | **3.720839** |
+| **Frame processing** | **3.720839** |
 
 From the table above, we can see that the computational time needed for rasterization has dropped dramatically, but all the other stages have slowed down due to the overhead caused by device memory operations and kernel calls. However, the total computational time to process a single frame stays low, therefore we achieved a gain in terms of performances.
 

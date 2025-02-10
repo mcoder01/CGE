@@ -52,10 +52,10 @@ __device__ void computeNormal(double* points, int* indices, double* normal) {
 }
 
 /**
- * Computes the normals of the viewed points according to the triangles which compose the mesh.
+ * Computes smooth normals of the viewed points according to the triangles which compose the mesh.
  * Returns a normal vector for each point of the mesh.
  */
-__global__ void computeAggregatedNormals(DeviceMesh& mesh, double* points, double* normals) {
+__global__ void computeSmoothNormals(DeviceMesh& mesh, double* points, double* normals) {
     int start, size;
     distribute(mesh.model.vertices_size, 3, &start, &size);
 
@@ -72,11 +72,11 @@ __global__ void computeAggregatedNormals(DeviceMesh& mesh, double* points, doubl
     }
 }
 
-double* computeNormals(DeviceMesh& mesh, double* points) {
+double* computeSmoothNormals(DeviceMesh& mesh, double* points) {
     double* normals;
     cudaMalloc((void**) &normals, mesh.model.points_size*sizeof(double));
     cudaMemset(normals, 0, mesh.model.points_size*sizeof(double));
-    computeAggregatedNormals<<<48,64>>>(mesh, points, normals);
+    computeSmoothNormals<<<48,64>>>(mesh, points, normals);
     return normals;
 }
 
@@ -122,10 +122,11 @@ Vertex* decomposeFaces(DeviceMesh mesh, double* points, double* texCoords, doubl
 }
 
 /**
- * Clips each triangle against the given plane in the 3D space. The clipped triangles
- * are stored into a the array of vertices `clipped`, while its length is stored into `len`.
+ * Compute the culling of the vertices against the given plane of the frustum.
+ * Triangles which crosses it are clipped and stored into the
+ * array of vertices `clipped`, while its length is stored into `len`.
  */
-__global__ void clipFaces(Vertex* vertices, int faces, Plane plane, Vertex* clipped, int* len) {
+__global__ void culling(Vertex* vertices, int faces, Plane plane, Vertex* clipped, int* len) {
     int start, size;
     distribute(faces, 1, &start, &size);
     for (int i = start; i < start+size; i++) {
@@ -170,24 +171,24 @@ __global__ void clipFaces(Vertex* vertices, int faces, Plane plane, Vertex* clip
     }
 }
 
-Vertex* clipFacesAgainstPlane(Vertex* vertices, int& faces, Plane plane) {
+Vertex* culling(Vertex* vertices, int& faces, Plane plane) {
     Vertex* clipped;
     int* output_size;
     cudaMalloc((void**) &clipped, 6*faces*sizeof(Vertex));
     cudaMalloc((void**) &output_size, sizeof(int));
     cudaMemset(output_size, 0, sizeof(int));
-    clipFaces<<<48,64>>>(vertices, faces, plane, clipped, output_size);
+    culling<<<48,64>>>(vertices, faces, plane, clipped, output_size);
     cudaMemcpy(&faces, output_size, sizeof(int), cudaMemcpyDefault);
     cudaFree(output_size);
     return clipped;
 }
 
 /**
- * Clips the given triangles against the near and far planes of the frustum.
+ * Performs the frustum culling against near and far planes of the frustum.
  */
-Vertex* clipFaces(Vertex* vertices, int& faces) {
-    Vertex* nearClipped = clipFacesAgainstPlane(vertices, faces, {0, 0, -1, 0, 0, -1});
-    Vertex* clipped = clipFacesAgainstPlane(nearClipped, faces, {0, 0, -100, 0, 0, 1});
+Vertex* frustumCulling(Vertex* vertices, int& faces) {
+    Vertex* nearClipped = culling(vertices, faces, {0, 0, -1, 0, 0, -1});
+    Vertex* clipped = culling(nearClipped, faces, {0, 0, -100, 0, 0, 1});
     cudaFree(nearClipped);
     return clipped;
 }
@@ -285,7 +286,7 @@ void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
         double* texCoords = uploadTexCoordsToDevice(d_mesh);
 
         cudaEventRecord(start, 0);
-        double* normals = computeNormals(d_mesh, points);
+        double* normals = computeSmoothNormals(d_mesh, points);
         cudaEventRecord(stop, 0);
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&time, start, stop);
@@ -301,7 +302,7 @@ void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
         faceDecompositionTime += time;
 
         cudaEventRecord(start, 0);
-        Vertex* clipped = clipFaces(vertices, faces);
+        Vertex* clipped = frustumCulling(vertices, faces);
         cudaEventRecord(stop, 0);
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&time, start, stop);

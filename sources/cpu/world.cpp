@@ -49,7 +49,7 @@ double* computeNormal(double* points, int* indices) {
  * Computes the normal for each triangle of the mesh and sums them
  * in order to obtain a smoother version, which can be used for shading.
  */
-double* computeAggregatedNormals(Mesh& mesh, double* points) {
+double* computeSmoothNormals(Mesh& mesh, double* points) {
     double* normals = new double[mesh.model.points.size()];
     std::vector<int>& indices = mesh.model.vertices;
     for (int i = 0; i < indices.size(); i += 3) {
@@ -95,10 +95,11 @@ int decomposeFaces(Mesh& mesh, double* points, double* texCoords, double* normal
 }
 
 /**
- * Clips each triangle against the given plane in the 3D space. The clipped triangles
- * are stored into a the array of vertices `clipped`, while its length is stored into `len`.
+ * Compute the culling of the vertices against the given plane of the frustum.
+ * Triangles which crosses it are clipped and stored into the
+ * array of vertices `clipped`, while its length is stored into `len`.
  */
-void clipFaces(Vertex* vertices, int faces, Plane plane, Vertex* clipped, int* len) {
+void culling(Vertex* vertices, int faces, Plane plane, Vertex* clipped, int* len) {
     *len = 0;
     for (int i = 0; i < faces; i++) {
         // For each triangle, divide points inside the frustum from outside ones
@@ -141,18 +142,18 @@ void clipFaces(Vertex* vertices, int faces, Plane plane, Vertex* clipped, int* l
 }
 
 /**
- * Clips the given triangles against the near and far planes of the frustum.
+ * Performs the frustum culling against near and far planes of the frustum.
  */
-Vertex* clipFaces(Vertex* vertices, int& faces) {
+Vertex* frustumCulling(Vertex* vertices, int& faces) {
     Vertex nearClipped[faces*6];
-    clipFaces(vertices, faces, {0, 0, -1, 0, 0, -1}, nearClipped, &faces);
+    culling(vertices, faces, {0, 0, -1, 0, 0, -1}, nearClipped, &faces);
     Vertex* clipped = new Vertex[faces*6];
-    clipFaces(nearClipped, faces, {0, 0, -100, 0, 0, 1}, clipped, &faces);
+    culling(nearClipped, faces, {0, 0, -100, 0, 0, 1}, clipped, &faces);
     return clipped;
 }
 
 /**
- * Perform the perspective projection of the given vertices.
+ * Performs the perspective projection of the given vertices.
  */
 void project(Vertex* vertices, int num_points, DeviceScreen screen) {
     for (int i = 0; i < num_points; i++) {
@@ -164,7 +165,7 @@ void project(Vertex* vertices, int num_points, DeviceScreen screen) {
 
 /**
  * Returns the rectangle which describe the smallest area containing the projections
- * of all the vertices
+ * of all the vertices.
  */
 SDL_Rect computeRenderArea(Vertex* vertices, int num_points, DeviceScreen screen) {
     int diagonal[4] = {INT_MAX, INT_MAX, 0, 0};
@@ -200,7 +201,7 @@ void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
         viewPointTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
 
         start = std::chrono::high_resolution_clock::now();
-        double* normals = computeAggregatedNormals(mesh, points);
+        double* normals = computeSmoothNormals(mesh, points);
         end = std::chrono::high_resolution_clock::now();
         normalComputationTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
         
@@ -212,7 +213,7 @@ void World::drawObjects(SDL_Surface* surface, Obj3d camera) {
         faceDecompositionTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
         
         start = std::chrono::high_resolution_clock::now();
-        Vertex* clipped = clipFaces(vertices, faces);
+        Vertex* clipped = frustumCulling(vertices, faces);
         end = std::chrono::high_resolution_clock::now();
         faceClippingTime += ((std::chrono::duration<float, std::milli>) (end-start)).count();
 
